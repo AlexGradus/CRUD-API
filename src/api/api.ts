@@ -92,7 +92,7 @@ app.put(
         username,
         age,
         hobbies,
-        id: "",
+        id: userId, // Исправлено
       });
 
       if (!updatedUser) {

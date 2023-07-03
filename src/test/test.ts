@@ -2,6 +2,20 @@ import request from "supertest";
 import app from "../api/api";
 import { createUser, getUserById, getUsers } from "../api/data";
 
+
+beforeAll(() => {
+
+  createUser({
+    id: "59eca481-c022-4968-b4f1-1c43b508a16b", username: "user1", age: 20,
+    hobbies: []
+  });
+  createUser({
+    id: "59eca481-c022-4968-b4f1-1c43b508a16s", username: "user2", age: 35,
+    hobbies: []
+  });
+
+});
+
 describe("API Routes", () => {
   describe("GET /api/users", () => {
     it("should return all users", async () => {
