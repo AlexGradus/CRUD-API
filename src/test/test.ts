@@ -2,18 +2,19 @@ import request from "supertest";
 import app from "../api/api";
 import { createUser, getUserById, getUsers } from "../api/data";
 
-
 beforeAll(() => {
-
   createUser({
-    id: "59eca481-c022-4968-b4f1-1c43b508a16b", username: "user1", age: 20,
-    hobbies: []
+    id: "59eca481-c022-4968-b4f1-1c43b508a16b",
+    username: "user1",
+    age: 20,
+    hobbies: [],
   });
   createUser({
-    id: "59eca481-c022-4968-b4f1-1c43b508a16s", username: "user2", age: 35,
-    hobbies: []
+    id: "59eca481-c022-4968-b4f1-1c43b508a16s",
+    username: "user2",
+    age: 35,
+    hobbies: [],
   });
-
 });
 
 describe("API Routes", () => {
@@ -42,7 +43,11 @@ describe("API Routes", () => {
     });
 
     it("should return 404 if user is not found", async () => {
-      const response = await request(app).get(`/api/users/nonExistingId`);
+      const nonExistingUserId = "00000000-0000-0000-0000-000000000000";
+
+      const response = await request(app).get(
+        `/api/users/${nonExistingUserId}`
+      );
       expect(response.status).toBe(404);
       expect(response.body).toEqual({ message: "User not found" });
     });
@@ -93,9 +98,11 @@ describe("API Routes", () => {
     });
 
     it("should return 404 if user is not found", async () => {
+      const nonExistingUserId = "00000000-0000-0000-0000-000000000000";
       const response = await request(app)
-        .put(`/api/users/nonExistingId`)
+        .put(`/api/users/${nonExistingUserId}`)
         .send({ username: "NewName", age: 30 });
+
       expect(response.status).toBe(404);
       expect(response.body).toEqual({ message: "User not found" });
     });
@@ -108,7 +115,7 @@ describe("API Routes", () => {
 
       const response = await request(app).delete(`/api/users/${userId}`);
       expect(response.status).toBe(204);
-      expect(getUserById(userId)).toBeNull();
+      expect(getUserById(userId)).toBeUndefined();
     });
 
     it("should return 400 if invalid userId is provided", async () => {
@@ -118,9 +125,11 @@ describe("API Routes", () => {
     });
 
     it("should return 404 if user is not found", async () => {
-      const response = await request(app).delete(`/api/users/nonExistingId`);
+      const nonExistingUserId = "00000000-0000-0000-0000-000000000000"; 
+    const response = await request(app)
+        .delete(`/api/users/${nonExistingUserId}`);
+    
       expect(response.status).toBe(404);
       expect(response.body).toEqual({ message: "User not found" });
     });
-  });
-});
+});})

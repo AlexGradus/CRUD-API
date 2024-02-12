@@ -1,4 +1,4 @@
-import express, { Request, Response, NextFunction } from "express";
+import http from "http";
 import { generateId, isValidUUID } from "../utils/utils";
 import { User } from "../interfaces/intefaces";
 import {
@@ -9,82 +9,84 @@ import {
   updateUser,
 } from "./data";
 
-const app = express();
-app.use(express.json());
+const app = http.createServer((req, res) => {
 
-app.get("/api/users", (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const allUsers = getUsers();
-    res.status(200).json(allUsers);
-  } catch (err) {
-    next(err);
+  const { method, url } = req;
+
+  const sendErrorResponse = (statusCode: number, message: string) => {
+    res.writeHead(statusCode, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ message }));
+  };
+
+  if (!url) {
+    sendErrorResponse(400, "Invalid URL");
+    return;
   }
-});
 
-app.get(
-  "/api/users/:userId",
-  (req: Request, res: Response, next: NextFunction) => {
+  if (method === "GET" && url === "/api/users") {
     try {
-      const { userId } = req.params;
-
-      if (!isValidUUID(userId)) {
-        res.status(400).json({ message: "Invalid userId" });
-        return;
-      }
-
-      const user = getUserById(userId);
-
-      if (!user) {
-        res.status(404).json({ message: "User not found" });
-        return;
-      }
-
-      res.status(200).json(user);
+      const allUsers = getUsers();
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(allUsers));
     } catch (err) {
-      next(err);
+      sendErrorResponse(500, "Internal server error");
     }
-  }
-);
-
-app.post("/api/users", (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { username, age, hobbies } = req.body;
-
-    if (!username || !age) {
-      res.status(400).json({ message: "Missing required fields" });
+  } else if (method === "GET" && url.startsWith("/api/users/")) {
+    const userId = url.split("/")[3];
+    if (!isValidUUID(userId)) {
+      sendErrorResponse(400, "Invalid userId");
       return;
     }
 
-    const newUser: User = {
-      username,
-      age,
-      hobbies: hobbies || [],
-      id: generateId(),
-    };
+    const user = getUserById(userId);
+    if (!user) {
+      sendErrorResponse(404, "User not found");
+      return;
+    }
 
-    const createdUser = createUser(newUser);
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(user));
+  } else if (method === "POST" && url === "/api/users") {
+    let body: Buffer[] = [];
+    req.on("data", (chunk) => {
+      body.push(chunk);
+    }).on("end", () => {
+      const requestBody = Buffer.concat(body).toString();
+      const { username, age, hobbies } = JSON.parse(requestBody);
 
-    res.status(201).json(createdUser);
-  } catch (err) {
-    next(err);
-  }
-});
-
-app.put(
-  "/api/users/:userId",
-  (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { userId } = req.params;
-
-      if (!isValidUUID(userId)) {
-        res.status(400).json({ message: "Invalid userId" });
+      if (!username || !age) {
+        sendErrorResponse(400, "Missing required fields");
         return;
       }
 
-      const { username, age, hobbies } = req.body;
+      const newUser: User = {
+        username,
+        age,
+        hobbies: hobbies || [],
+        id: generateId(),
+      };
+
+      const createdUser = createUser(newUser);
+
+      res.writeHead(201, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(createdUser));
+    });
+  } else if (method === "PUT" && url.startsWith("/api/users/")) {
+    const userId = url.split("/")[3];
+    if (!isValidUUID(userId)) {
+      sendErrorResponse(400, "Invalid userId");
+      return;
+    }
+
+    let body: Buffer[] = [];
+    req.on("data", (chunk) => {
+      body.push(chunk);
+    }).on("end", () => {
+      const requestBody = Buffer.concat(body).toString();
+      const { username, age, hobbies } = JSON.parse(requestBody);
 
       if (!username || !age) {
-        res.status(400).json({ message: "Missing required fields" });
+        sendErrorResponse(400, "Missing required fields");
         return;
       }
 
@@ -92,53 +94,35 @@ app.put(
         username,
         age,
         hobbies,
-        id: userId, // Исправлено
+        id: userId,
       });
 
       if (!updatedUser) {
-        res.status(404).json({ message: "User not found" });
+        sendErrorResponse(404, "User not found");
         return;
       }
 
-      res.status(200).json(updatedUser);
-    } catch (err) {
-      next(err);
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(updatedUser));
+    });
+  } else if (method === "DELETE" && url.startsWith("/api/users/")) {
+    const userId = url.split("/")[3];
+    if (!isValidUUID(userId)) {
+      sendErrorResponse(400, "Invalid userId");
+      return;
     }
-  }
-);
 
-app.delete(
-  "/api/users/:userId",
-  (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { userId } = req.params;
-
-      if (!isValidUUID(userId)) {
-        res.status(400).json({ message: "Invalid userId" });
-        return;
-      }
-
-      const deleted = deleteUser(userId);
-
-      if (!deleted) {
-        res.status(404).json({ message: "User not found" });
-        return;
-      }
-
-      res.status(204).send();
-    } catch (err) {
-      next(err);
+    const deleted = deleteUser(userId);
+    if (!deleted) {
+      sendErrorResponse(404, "User not found");
+      return;
     }
+
+    res.writeHead(204);
+    res.end();
+  } else {
+    sendErrorResponse(404, "Not found");
   }
-);
-
-app.use((req: Request, res: Response, next: NextFunction) => {
-  res.status(404).json({ message: "Not found" });
-});
-
-app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  console.error(err);
-  res.status(500).json({ message: "Internal server error" });
 });
 
 export default app;

@@ -5,4 +5,4 @@ Start the server:npm run start:dev,
 
 Tests:npm tests,
 
-Via Postman:http://localhost:5000/api/users/
+Via Postman:http://localhost:3000/api/users/
